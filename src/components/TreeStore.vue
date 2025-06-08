@@ -1,41 +1,101 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+  import {useTreeStore} from '../store'
+  import { AllCommunityModule, ModuleRegistry } from 'ag-grid-community';
+  import { TreeDataModule } from 'ag-grid-enterprise';
+  import { AgGridVue } from "ag-grid-vue3"; // Vue Data Grid Component
+  import { ref, computed } from 'vue'
+  import type TreeType from '../models/index.ts';
 
-defineProps<{ msg: string }>()
+  const modules = [AllCommunityModule]
+  const treeStore = useTreeStore()
 
-const count = ref(0)
+  ModuleRegistry.registerModules([AllCommunityModule, TreeDataModule]);
+  
+  const colDefs = ref([
+        {headerName: 'Наименование', field: "label" },
+        
+    ]);
+
+  const colDefsEdit = ref([
+        {headerName: 'Наименование', field: "label", editable: true, },
+        {
+          headerName: '',
+          field: 'id',
+          cellRenderer: AddButtonRenderer,
+        },
+        {
+          headerName: '',
+          field: 'id',
+          cellRenderer: DeleteButtonRenderer,
+        },
+        
+    ]);
+
+  function DeleteButtonRenderer(params: any) {
+  const button = document.createElement('button')
+  button.innerText = '❌'
+  button.className = 'ag-btn'
+  button.addEventListener('click', () => treeStore.removeItem(params.value))
+  return button
+  }
+
+  function AddButtonRenderer(params: any) {
+    const button = document.createElement('button')
+    button.innerText = '➕'
+    button.className = 'ag-btn'
+    button.addEventListener('click', () => treeStore.addItem(params.value))
+    return button
+  }
+
+
+function buildTreeData(data: TreeType[]) {
+  const getPath = (id: string | number): string[] => {
+    const item = data.find(i => String(i.id) === String(id));
+    if (!item) return [];
+    if (!item.parent) return [item.label];
+    return [...getPath(item.parent), item.label];
+  }
+
+  return data.map(item => ({
+    ...item,
+    path: getPath(item.id)
+  }));
+}
+
+
+
+const rowData = computed(() => 
+  buildTreeData(treeStore.treeObject).map(item => ({
+    ...item,
+    id: Number(item.id)
+  }))
+)
+
+const changeMode = () => {
+  treeStore.status === 'Редактирование' ? treeStore.status = 'Просмотр' : treeStore.status = 'Редактирование'
+}
+
 </script>
 
 <template>
-  <h1>{{ msg }}</h1>
-
-  <div class="card">
-    <button type="button" @click="count++">count is {{ count }}</button>
-    <p>
-      Edit
-      <code>components/HelloWorld.vue</code> to test HMR
-    </p>
+  <button @click="changeMode">Режим: {{ treeStore.status }}</button>
+  <div class="ag-theme-alpine" style="height: 600px; width: 100%; border: 1px solid #ccc">
+      <AgGridVue
+        :rowData="rowData"
+        :columnDefs="treeStore.status === 'Редактирование' ? colDefsEdit : colDefs"
+        :modules="modules"
+        class="ag-theme-alpine"
+        :treeData="true"
+        :getDataPath="(data) => data.path"
+        :autoGroupColumnDef="{headerName: 'Категория', field: 'label' }"
+        rowSelection="single"
+        style="width: 100%; height: 600px;"
+        theme="legacy"
+      />
   </div>
-
-  <p>
-    Check out
-    <a href="https://vuejs.org/guide/quick-start.html#local" target="_blank"
-      >create-vue</a
-    >, the official Vue + Vite starter
-  </p>
-  <p>
-    Learn more about IDE Support for Vue in the
-    <a
-      href="https://vuejs.org/guide/scaling-up/tooling.html#ide-support"
-      target="_blank"
-      >Vue Docs Scaling up Guide</a
-    >.
-  </p>
-  <p class="read-the-docs">Click on the Vite and Vue logos to learn more</p>
+  
 </template>
 
 <style scoped>
-.read-the-docs {
-  color: #888;
-}
+
 </style>

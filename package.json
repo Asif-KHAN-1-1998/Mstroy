@@ -9,6 +9,9 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "ag-grid-enterprise": "^33.3.2",
+    "ag-grid-vue3": "^33.3.2",
+    "pinia": "^3.0.3",
     "vue": "^3.5.16"
   },
   "devDependencies": {
